@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AirSensor DataViewer</title>
+    <style>
+        /* Reset default margin and padding */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        /* Basic styling for the body */
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f5f5f5;
+        }
+
+        /* Top navigation bar */
+        .top-nav {
+            background-color: #333;
+            color: #fff;
+            padding: 10px;
+            text-align: center;
+        }
+
+        /* Secondary navigation bar */
+        .secondary-nav {
+            background-color: #444;
+            color: #fff;
+            padding: 10px;
+            text-align: center;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            background-color: #ddd;
+            width: 250px;
+            padding: 20px;
+            float: left;
+        }
+
+        /* Main content area */
+        .content {
+            margin-left: 260px;
+            padding: 20px;
+        }
+
+        /* Interactive map */
+        #map {
+            width: 100%;
+            height: 400px;
+            background-color: #fff;
+        }
+
+        /* Graph */
+        .graph {
+            width: 100%;
+            height: 300px;
+            background-color: #fff;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="top-nav">
+        <img src="logo.png" alt="AirSensor Logo" width="100">
+        <nav>
+            <a href="#">Explore</a> |
+            <a href="#">View Data</a> |
+            <a href="#">Live Data</a> |
+            <a href="#">About</a>
+        </nav>
+    </div>
+
+    <div class="secondary-nav">
+        <a href="#">Overview</a> |
+        <a href="#">Calendar</a> |
+        <a href="#">Raw Data</a> |
+        <a href="#">Daily Patterns</a> |
+        <a href="#">Compare</a> |
+        <a href="#">Timelapse</a>
+    </div>
+
+    <div class="sidebar">
+        <!-- Filters for community, sensor, date, etc. -->
+        <!-- You can add your filter options here -->
+    </div>
+
+    <div class="content">
+        <div id="map"></div>
+        <div class="graph"></div>
+    </div>
+
+    <!-- Include your JavaScript for map and graph interactions here -->
+</body>
+</html>

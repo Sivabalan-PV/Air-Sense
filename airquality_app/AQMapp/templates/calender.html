@@ -1,0 +1,158 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1>A Year Calendar Analysis of Air Quality Data</h1>
+<p>Select coordinates of a place to view a Calendar-based Analysis of air quality data for that area.</p>
+<hr>
+<div id="map" style="height: 600px; width: 1000px;"></div>
+<div id="data"></div>
+<div class="container">
+    <div class="row">
+        <div class="col-md-8">
+            <div id="calendar"></div>
+        </div>
+        <div class="col-md-4">
+            <div id="color-reference">
+                <h3>PM 2.5 Values Color Reference</h3>
+            </div>
+        </div>
+    </div>
+</div>
+<div id="myDiv"></div>
+<canvas id="calendarCanvas" width="400" height="400"></canvas>
+
+<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+<script>
+    var map = L.map('map').setView([41.5055, -72.700], 8);
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '© <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+    }).addTo(map);
+    map.on('click', (event) => {
+        const eddate = Math.floor(Date.now() / 1000);
+        const stdate = eddate - 365 * 24 * 60 * 60; // 365 days
+        let lat = event.latlng.lat;
+        let lon = event.latlng.lng;
+        L.marker([lat, lon]).addTo(map);
+        const apiKey = '1f729eb41eeba325f71a7228682af68a';
+        const apiUrl = 'http://localhost:3000/proxy?';
+        fetch(`${apiUrl}lat=${lat}&lon=${lon}&start=${stdate}&end=${eddate}&appid=${apiKey}`, {
+            method: 'GET',
+            mode: 'cors',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        })
+        .then(response => response.json())
+        .then(data => {
+            console.log('Fetched Data:', data);
+
+            const pm2_5 = data.list.map(item => item.components.pm2_5);
+            const dt = data.list.map(item => item.dt);
+            const dailyAverages = {};
+            pm2_5.forEach((value, index) => {
+                const date = new Date(dt[index] * 1000).toISOString().split('T')[0];
+                if (!dailyAverages[date]) {
+                    dailyAverages[date] = { sum: value, count: 1 };
+                } else {
+                    dailyAverages[date].sum += value;
+                    dailyAverages[date].count++;
+                }
+            });
+
+            const pm25Data = Object.keys(dailyAverages).map(date => ({
+                time: date,
+                value: dailyAverages[date].sum / dailyAverages[date].count
+            }));
+
+            console.log('PM2.5 Data:', pm25Data);
+
+            $('#calendar').fullCalendar({
+                dayRender: function(date, cell) {
+                    var today = $.fullCalendar.moment();
+                    var dateString = date.format('YYYY-MM-DD');
+                    var pmValue = pm25Data.find(data => data.time === dateString)?.value;
+
+                    if (pmValue !== undefined) {
+                        var bgColor;
+                        if (pmValue <= 12) {
+                            bgColor = '#ABE3F4'; // Light blue
+                        } else if (pmValue <= 35) {
+                            bgColor = '#118CBA'; // Blue
+                        } else if (pmValue <= 55) {
+                            bgColor = '#286096'; // Dark blue
+                        } else if (pmValue <= 75) {
+                            bgColor = '#8659A5'; // Purple
+                        } else {
+                            bgColor = '#6A367A'; // Dark purple
+                        }
+
+                        cell.css('background', bgColor);
+                        cell.attr('title', 'PM2.5: ' + pmValue); // Display PM2.5 value on hover
+                    }
+                }
+            });
+
+            const colorReference = [
+                { range: '0 - 12', color: '#ABE3F4', label: 'Light blue' },
+                { range: '13 - 35', color: '#118CBA', label: 'Blue' },
+                { range: '36 - 55', color: '#286096', label: 'Dark blue' },
+                { range: '56 - 75', color: '#8659A5', label: 'Purple' },
+                { range: '76+', color: '#6A367A', label: 'Dark purple' }
+            ];
+
+            // Display the color reference
+            colorReference.forEach(item => {
+                const colorBox = document.createElement('div');
+                colorBox.className = 'color-box';
+                colorBox.style.backgroundColor = item.color;
+                document.getElementById('color-reference').appendChild(colorBox);
+
+                const span = document.createElement('span');
+                span.textContent = `${item.range} (${item.label})`;
+                document.getElementById('color-reference').appendChild(span);
+                document.getElementById('color-reference').appendChild(document.createElement('br'));
+            });
+
+            const formattedDates = pm25Data.map(point => {
+                const date = new Date(point.time);
+                const day = date.getDate();
+                const month = date.toLocaleString('default', { month: 'short' });
+                return `${day} ${month}`;
+            });
+
+            // Create the scatter plot
+            const timeHours = formattedDates; // Example: [1, 2, 3, ...]
+            const pmValues = pm25Data.map(point => point.value); // Example: [10, 20, 15, ...]
+
+            const trace = {
+                type: 'scatter',
+                mode: 'lines',
+                x: timeHours,
+                y: pmValues,
+                line: { color: '#17BECF' } // Customize the line color
+            };
+
+            const layout = {
+                title: 'PM2_5 Data For a Year',
+                xaxis: {
+                    title: 'Datetime',
+                    type: 'category', // Set x-axis type to 'category'
+                    tickangle: -45 // Rotate x-axis labels
+                },
+                yaxis: {
+                    title: 'PM Values',
+                    type: 'linear'
+                }
+            };
+
+            const dataScatter = [trace];
+            Plotly.newPlot('myDiv', dataScatter, layout);
+
+        })
+        .catch(error => {
+            console.error('Error fetching data:', error);
+        });
+
+    });
+</script>
+{% endblock %}

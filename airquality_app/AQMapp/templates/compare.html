@@ -1,0 +1,102 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1>Compare Present and Previous Day Analysis of Air Quality Data</h1>
+<p>select a coordinates of a place to compare present and previous day air quality data of that area</p>
+<hr>
+<div id="map" style="height: 600px; width: 1000px;"></div>
+<div id="data"></div>
+<canvas id="pm25Chart" style="width: 100%; max-width: 700px;"></canvas>
+<div id="myDiv"></div>
+<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+
+<script>
+    var map = L.map('map').setView([41.5055, -72.700], 8);
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '© <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+    }).addTo(map);
+    map.on('click', (event) => {
+        const eddate = Math.floor(Date.now() / 1000);
+        const stdate = eddate - 48 * 60 * 60;
+        let lat = event.latlng.lat;
+        let lon = event.latlng.lng;
+        L.marker([lat, lon]).addTo(map);
+        const apiKey = '1f729eb41eeba325f71a7228682af68a';
+        const apiUrl = 'http://localhost:3000/proxy?';
+        fetch(`${apiUrl}lat=${lat}&lon=${lon}&start=${stdate}&end=${eddate}&appid=${apiKey}`, {
+            method: 'GET',
+            mode: 'cors',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        })
+        .then(response => response.json())
+        .then(data => {
+            console.log('Fetched Data:', data);
+
+            const pm2_5 = data.list.map(item => item.components.pm2_5);
+            const dt = data.list.map(item => item.dt);
+
+            const pm25Data = pm2_5.map((value, index) => ({
+                time: dt[index],
+                value: value
+            }));
+            console.log(pm25Data);
+            const groupedData = {};
+
+pm25Data.forEach(item => {
+    const date = new Date(item.time * 1000); // Convert Unix timestamp to JavaScript Date
+    const dateString = `${date.getUTCMonth() + 1}/${date.getUTCDate()}/${date.getUTCFullYear()}`;
+
+    if (!groupedData[dateString]) {
+        groupedData[dateString] = [];
+    }
+
+    groupedData[dateString].push({ time: item.time, value: item.value });
+});
+
+console.log('Grouped PM2.5 data:', groupedData);
+
+
+            // Convert Unix timestamp to human-readable time (UTC)
+            function extractTime(unixTimestamp) {
+                const date = new Date(unixTimestamp * 1000);
+                return `${date.getUTCHours()}:${date.getUTCMinutes()}`;
+            }
+
+         
+            
+// Create an array of traces for each date
+const traces = Object.keys(groupedData).map(dateString => {
+    const selectedData = groupedData[dateString];
+    const timeHours = selectedData.map(point => extractTime(point.time));
+    const pmValues = selectedData.map(point => point.value);
+
+    return {
+        type: 'scatter',
+        mode: 'markers',
+        x: timeHours,
+        y: pmValues,
+        name: dateString // Use the date as the trace name
+    };
+});
+
+// Layout for the scatter plot
+const layout = {
+    title: 'PM2.5 of Present Day and Previous Day',
+    xaxis: { title: 'Time (UTC)' ,
+    tickangle: -45 },
+    yaxis: { title: 'PM2.5 Value' }
+    
+};
+
+// Create the plot
+Plotly.newPlot('myDiv', traces, layout);
+        })
+        .catch(error => {
+            // Handle errors
+            console.error('Error fetching data:', error);
+        });
+    });
+</script>
+{% endblock %}

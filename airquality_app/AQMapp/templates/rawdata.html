@@ -1,0 +1,93 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1>Actual Values of Air Quality Data</h1>
+<p>select a coordinates of a place to view the current air quality data of that area </p>
+<hr>
+<div id ="map" style="height: 600px; width: 1000px;"></div>
+<div id="data"></div>
+<script>
+    var map = L.map('map').setView([41.5055, -72.700], 8);
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '© <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+}).addTo(map);
+map.on('click',(event)=>{
+    let lat=event.latlng.lat
+    let lon=event.latlng.lng
+    L.marker([lat,lon]).addTo(map)
+    const apiKey = '3b6a9254e2454dfd802f1549ef419e96';
+    const apiUrl = 'https://api.weatherbit.io/v2.0/current/airquality';
+    fetch(`${apiUrl}?lat=${lat}&lon=${lon}&key=${apiKey}`, {
+        headers: {
+            'Content-Type': 'application/json',
+        },
+    })
+    .then(response => response.json())
+    .then(data => {
+        let dataBox = document.getElementById('data');
+        dataBox.innerHTML = ''; // Clear the previous data
+
+        // Accessing data inside the 'data' array
+        let aqi = data.data[0].aqi;
+        let o3 = data.data[0].o3;
+        let so2 = data.data[0].so2;
+        let no2 = data.data[0].no2;
+        let co = data.data[0].co;
+        let pm10 = data.data[0].pm10;
+        let pm25 = data.data[0].pm25;
+        let pollenLevelTree = data.data[0].pollen_level_tree;
+        let pollenLevelGrass = data.data[0].pollen_level_grass;
+        let pollenLevelWeed = data.data[0].pollen_level_weed;
+        let moldLevel = data.data[0].mold_level;
+        let predominantPollenType = data.data[0].predominant_pollen_type;
+
+        // Create HTML elements for each data point and append them to the dataBox
+        dataBox.innerHTML += `<p><strong>Latitude:</strong> ${data.lat}</p>`;
+        dataBox.innerHTML += `<p><strong>Longitude:</strong> ${data.lon}</p>`;
+        dataBox.innerHTML += `<p><strong>Timezone:</strong> ${data.timezone}</p>`;
+        dataBox.innerHTML += `<p><strong>City Name:</strong> ${data.city_name}</p>`;
+        dataBox.innerHTML += `<p><strong>Country Code:</strong> ${data.country_code}</p>`;
+        dataBox.innerHTML += `<p><strong>State Code:</strong> ${data.state_code}</p>`;
+        dataBox.innerHTML += `<p><strong>AQI:</strong> ${aqi}</p>`;
+        dataBox.innerHTML += `<p><strong>O3:</strong> ${o3}</p>`;
+        dataBox.innerHTML += `<p><strong>SO2:</strong> ${so2}</p>`;
+        dataBox.innerHTML += `<p><strong>NO2:</strong> ${no2}</p>`;
+        dataBox.innerHTML += `<p><strong>CO:</strong> ${co}</p>`;
+        dataBox.innerHTML += `<p><strong>PM10:</strong> ${pm10}</p>`;
+        dataBox.innerHTML += `<p><strong>PM2.5:</strong> ${pm25}</p>`;
+        dataBox.innerHTML += `<p><strong>Pollen Level Tree:</strong> ${pollenLevelTree}</p>`;
+        dataBox.innerHTML += `<p><strong>Pollen Level Grass:</strong> ${pollenLevelGrass}</p>`;
+        dataBox.innerHTML += `<p><strong>Pollen Level Weed:</strong> ${pollenLevelWeed}</p>`;
+        dataBox.innerHTML += `<p><strong>Mold Level:</strong> ${moldLevel}</p>`;
+        dataBox.innerHTML += `<p><strong>Predominant Pollen Type:</strong> ${predominantPollenType}</p>`;
+        // Create new elements
+        let textBox = document.createElement('div');
+        
+        if(aqi >= 0 && aqi <= 50) {
+            textBox.innerHTML = 'Good - No Advisory';
+            textBox.style.backgroundColor = 'green';
+        } else if(aqi >= 51 && aqi <= 100) {
+            textBox.innerHTML = 'Moderate - Sensitive individuals should consider limiting prolonged outdoor exertion.';
+            textBox.style.backgroundColor = 'yellow';
+        } else if(aqi >= 101 && aqi <=150) {
+            textBox.innerHTML = 'Unhealthy for Sensitive Groups - Children, active adults, and people with respiratory disease, such as asthma, should limit prolonged outdoor exertion.';
+            textBox.style.backgroundColor = 'orange';
+        } else if(aqi >=151 && aqi <=200) {
+            textBox.innerHTML ='Unhealthy - Children, active adults, and people with respiratory disease should avoid outdoor exertion; everyone else should limit prolonged outdoor exertion.';
+            textBox.style.backgroundColor ='red';
+         } else if(aqi >=201 && aqi <=300){
+             textBox.innerHTML ='Very Unhealthy - Children, active adults, and people with respiratory disease should avoid outdoor exertion; everyone else should limit prolonged outdoor exertion.';
+             textBox.style.backgroundColor ='purple';
+         }else{
+             textBox.innerHTML='Hazardous- Everyone should avoid all physical activity outdoors.';
+             textbox.style.backgroundColor='maroon'
+         }
+        
+       // Append new elements to dataBox
+       dataBox.appendChild(textBox);
+
+    });
+})
+</script>
+
+{% endblock %}

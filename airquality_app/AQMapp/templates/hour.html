@@ -1,0 +1,170 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1>24 Hours Analysis of Air Quality Data</h1>
+<p>select a coordinates of a place to view the 24 Hours Analysis of air quality data of that area </p>
+<hr>
+<div id="map" style="height: 600px; width: 1000px;"></div>
+<div id="data"></div>
+<canvas id="pm25Chart" style="width: 100%; max-width: 700px;"></canvas>
+<div id="myDiv"></div>
+<div id="recommendation"></div>
+<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+
+<script>
+    var map = L.map('map').setView([41.5055, -72.700], 8);
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '© <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+    }).addTo(map);
+    map.on('click', (event) => {
+        const eddate = Math.floor(Date.now() / 1000);
+        const stdate = eddate - 24 * 60 * 60;
+        let lat = event.latlng.lat;
+        let lon = event.latlng.lng;
+        L.marker([lat, lon]).addTo(map);
+        const apiKey = '1f729eb41eeba325f71a7228682af68a';
+        const apiUrl = 'http://localhost:3000/proxy?';
+        fetch(`${apiUrl}lat=${lat}&lon=${lon}&start=${stdate}&end=${eddate}&appid=${apiKey}`, {
+            method: 'GET',
+            mode: 'cors',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        })
+        .then(response => response.json())
+        .then(data => {
+            console.log('Fetched Data:', data);
+            
+            const pm2_5 = data.list.map(item => item.components.pm2_5);
+            const dt = data.list.map(item => item.dt);
+
+            const pm25Data = pm2_5.map((value, index) => ({
+                time: dt[index],
+                value: value
+            }));
+
+            console.log(pm25Data);
+
+            // Convert Unix timestamp to human-readable time (UTC)
+            function extractTime(unixTimestamp) {
+                const date = new Date(unixTimestamp * 1000);
+                return `${date.getUTCHours()}:${date.getUTCMinutes()}`;
+            }
+
+            // Prepare data for the chart
+            const labels = pm25Data.map(point => extractTime(point.time));
+            const values = pm25Data.map(point => point.value);
+                console.log(pm25Data.map(point => extractTime(point.time)));
+                console.log(pm25Data.map(point => point.value));
+            // Create the bar chart
+            const ctx = document.getElementById('pm25Chart').getContext('2d');
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'PM2.5 Values',
+                        data: values,
+                        backgroundColor: 'rgba(54, 162, 235, 0.6)', // Customize the color
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    plugins: {
+            title: {
+                display: true,
+                text: '24-Hour Report of PM2.5 Readings', // Title for the chart
+                fontSize: 16
+            }
+        },
+                    scales: { y: {
+                title: {
+                    display: true,
+                    text: 'PM2.5 Values' // Y-axis label
+                },
+                ticks: {
+                    beginAtZero: true
+                }
+            },
+            x: {
+                title: {
+                    display: true,
+                    text: 'Time (Railway Hours)' // X-axis label
+                },
+                type:'category',
+                ticks: {
+                    autoSkip: true,
+                    maxTicksLimit: 10 // Limit the number of x-axis ticks
+                }
+            }
+                    }
+                }
+            });
+
+            // Create the scatter plot
+            const timeHours = labels; // Example: [1, 2, 3, ...]
+            const pmValues = values; // Example: [10, 20, 15, ...]
+
+            const trace = {
+                type: 'scatter',
+                mode: 'lines',
+                x: timeHours,
+                y: pmValues,
+                line: { color: '#17BECF' } // Customize the line color
+            };
+
+            const layout = {
+                title: '24 hours Report of Air Quality Data',
+                xaxis: {
+                    title: 'Time (Railway Hours)',
+                    type: 'category' // Set x-axis type to 'category'
+                },
+                yaxis: {
+                    title: 'PM Values',
+                    type: 'linear'
+                }
+            };
+
+            const dataScatter = [trace];
+            Plotly.newPlot('myDiv', dataScatter, layout);
+            
+            const value = pm25Data.map(point => point.value);
+
+// Air quality recommendations based on PM2.5 values
+const recommendations = [
+    { range: '0 - 12', color: '#ABE3F4', label: 'Very Good',message:'safe to do all kinds of out door activities and jobs' },
+    { range: '13 - 35', color: '#118CBA', label: 'Good' ,message:'to do all activities and there are little bit exposure to pm2.5 particles '},
+    { range: '36 - 55', color: '#286096', label: 'Moderate',message:'can do all sort of activities but there has been seen in increasing of the pm2.5 concentration beware of rising concentration ' },
+    { range: '56 - 75', color: '#8659A5', label: 'High' ,message:'can do all sort of activities but there has been seen in increasing of the pm2.5 concentration beware of rising concentration'},
+    { range: '76+', color: '#6A367A', label: 'Danger',message:'beware of the high concentration of pm2.5 and reduce the expoture to the surrondings and try to reduce pollution by planting trees' },
+];
+
+// Determine the average PM2.5 value
+const averageValue = value.reduce((sum, value) => sum + value, 0) / value.length;
+
+// Find the recommendation based on the average value
+const recommendation = recommendations.find(range => {
+    const [min, max] = range.range.split(' - ').map(Number);
+    return averageValue >= min && averageValue <= max;
+});
+
+// Display the recommendation
+// Create a div element for the recommendation
+const textBox = document.createElement('div');
+textBox.style.backgroundColor = recommendation.color;
+;
+textBox.innerHTML = `
+    <h2><strong>${recommendation.label}</strong></h2>
+    <p>${recommendation.message}</p>
+`;
+
+// Append the recommendation to a container (replace 'containerId' with the actual container ID)
+document.getElementById('recommendation').appendChild(textBox);
+        })
+        .catch(error => {
+            // Handle errors
+            console.error('Error fetching data:', error);
+        });
+    });
+</script>
+{% endblock %}
