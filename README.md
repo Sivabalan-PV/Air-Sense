@@ -23,5 +23,7 @@ Web Application for Air Quality Visualization:
 Steps for installation:
 
 1.To install this web app into your system clone the repository and install django and node.js.
+
 2.Run a proxy server in another terminal.(to forward the received to your web application to avoid Cross Origin Resource Sharing (CORS) errors).
+
 3.Run the django project in other terminal.
